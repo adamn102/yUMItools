@@ -1,3 +1,3 @@
 ## yUMItools
 
-![](images/yUMItools_logo.pdf)
+![yUMItools](images/yUMItools_logo.pdf)
