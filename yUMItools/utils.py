@@ -1,6 +1,3 @@
-from Bio import SeqIO
-
-
 class YUMISet:
     """
     yUMI set Data Class
@@ -16,9 +13,68 @@ class YUMISet:
     * comparing multiple yUMI sets to compute mutation data
     """
 
-    def __init__(self, bed_file, reference_sequence):
-        self.bed_file = bed_file
+    def __init__(self, reference_sequence):
+        self.reference_sequence = reference_sequence
+        self.barcode_dict = dict()
+        self.flankseq_dict = dict()
+        self.value = 0
 
-        # parse reference sequence
-        for record in SeqIO.parse(reference_sequence, "fasta"):
-            self.reference_sequence = record
+    def parse_reference_sequence(self):
+        """
+        This function will parse reference sequences for UMI locations
+        and reference sequences
+
+        :param reference_sequence:
+        :return:
+        * dict of UMI locations
+        * UMI flanking sequences
+        * reference sequence
+        """
+        from Bio import SeqIO
+        cache = 0
+        barcode_dict = dict()
+        flankseq_dict = dict()
+
+        for record in SeqIO.parse(self.reference_sequence, "fasta"):
+            # add the X to prevent index overflow
+            # this is for barcodes at the end of the sequence
+            sequence = record.seq + "X"
+            i = 0
+            barcode_end = 0
+            while sequence.find('N') != -1:
+
+                barcode_start = sequence.find('N')
+
+                # find barcode length
+                length = 0
+                while sequence[barcode_start + length] == "N":
+                    length += 1
+                barcode_end = barcode_start + length
+
+                barcode_dict['barcode' + str(i)] = (barcode_start + cache, barcode_end + cache)
+
+                # find the 15bp flanking sequences of the barcodes
+                # will not work properly if barcode distance is < 15 bp
+                five_prime_flank = str(record.seq[barcode_start + cache - 15: barcode_start + cache])
+                three_prime_flank = str(record.seq[barcode_end + cache: barcode_end + cache + 15])
+                flankseq_dict['barcode' + str(i)] = (five_prime_flank, three_prime_flank)
+
+                i += 1
+                cache += barcode_end
+                sequence = sequence[barcode_end:]
+
+        # update object variables
+        self.barcode_dict = barcode_dict
+        self.flankseq_dict = flankseq_dict
+
+    def parse_bam_file(self, bam_file):
+        """
+        create a barcode dict where the keys are the barcode
+        and the values are the ID values for reads that map
+        to the key barcode
+
+        for paired end reads - if one read maps to the barcode, make sure to keep both reads
+        :param bam_file:
+        :return:
+        """
+        pass
