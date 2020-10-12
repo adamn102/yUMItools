@@ -1,3 +1,6 @@
+import pysam
+
+
 class YUMISet:
     """
     yUMI set Data Class
@@ -78,3 +81,33 @@ class YUMISet:
         :return:
         """
         pass
+
+
+def read_bamfile(file_name):
+
+    samfile = pysam.AlignmentFile(file_name, "rb")
+
+    return samfile
+
+
+def barcode_extraction(samfile, reference, barcode_location, barcode_flank):
+    # list for collecting barcodes
+    barcodes = []
+
+    bam_iter = samfile.fetch(reference, barcode_location[0], barcode_location[1])
+    for x in bam_iter:
+        if barcode_flank[0] in x.seq:
+            if barcode_flank[1] in x.seq:
+                start = x.seq.find(barcode_flank[0][10:]) + 5
+                end = x.seq.find(barcode_flank[1][:5])
+                if start < end and len(x.seq[start:end]) == 15:
+                    barcodes.append(x.seq[start:end])
+    return barcodes
+
+def fetch_barcodes(barcode, samfile, reference, barcode_location, barcode_flank):
+
+    # goal of this function is to fetch paired reads to specific barcode regions
+    # for any specific barcode will fetch the paired reads
+
+
+    pass
