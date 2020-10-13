@@ -19,6 +19,7 @@ class YUMISet:
 
     def __init__(self, reference_sequence, bamfile):
         self.reference_sequence = reference_sequence
+        self.reference_sequence_name = self.reference_sequence.split("/")[-1].split(".")[0]
         self.barcode_dict = dict()
         self.flankseq_dict = dict()
         self.parse_reference_sequence()
@@ -109,6 +110,42 @@ class YUMISet:
                 else:
                     self.read_dict[read_name][1] = read
 
+    def umi_phase(self, barcode_sequence, position_A, position_B, distance=2):
+
+        # take the reads mapped to the barcode_sequence at position_A and
+        # identify the phased barcode at position_B
+
+        # fetch reads to barcode in position A
+        umi_data = fetch_barcode_reads(barcode=barcode_sequence,
+                                       samfile=self.samfile,
+                                       reference=self.reference_sequence.split("/")[-1].split(".")[0],
+                                       barcode_location=self.barcode_dict['barcode' + str(position_A)],
+                                       barcode_flank=self.flankseq_dict['barcode' + str(position_A)],
+                                       distance=distance)
+
+        # find reads from position A that overlap position B
+        umi_list = barcode_extraction_read_list(umi_data,
+                                                self.flankseq_dict['barcode' + str(position_B)],
+                                                self.read_dict)
+
+        # return the most common barcode
+        # todo: return umi metrics
+        return Counter(umi_list).most_common(1)[0][0]
+
+    def stitching(self, seed):
+
+        # iterate the phasing of multiple barcodes together from
+        # barcode 0 to barcode 5
+
+        umi_set = defaultdict(lambda: [None, None, None, None, None, None])
+        x = 0
+        umi_set[x] = seed
+        while x < 5:
+            seed = self.umi_phase(seed, x, x + 1)
+            x = x + 1
+            umi_set[x] = seed
+        return umi_set
+
 
 def barcode_extraction(samfile, reference, barcode_location, barcode_flank):
     # list for collecting barcodes
@@ -125,28 +162,50 @@ def barcode_extraction(samfile, reference, barcode_location, barcode_flank):
     return barcodes
 
 
+def barcode_extraction_read_list(read_list, barcode_flank, read_dict):
+    # list for collecting barcodes
+    barcodes = []
+
+    read_data_list = []
+    [read_data_list.append(read_dict[x][0]) for x in read_list]
+    [read_data_list.append(read_dict[x][1]) for x in read_list]
+
+    for x in read_data_list:
+        if barcode_flank[0][10:] in x.seq:
+            if barcode_flank[1][:5] in x.seq:
+                start = x.seq.find(barcode_flank[0][10:]) + 5
+                end = x.seq.find(barcode_flank[1][:5])
+                if start < end and len(x.seq[start:end]) == 15:
+                    barcodes.append(x.seq[start:end])
+    return barcodes
+
+
 def fetch_barcode_reads(barcode, samfile, reference, barcode_location, barcode_flank, distance=2):
     # goal of this function is to fetch paired reads to specific barcode regions
     # for any specific barcode will fetch the paired reads
 
     # list for collecting barcodes
     barcode_dict = dict()
+    read_list = []
 
     bam_iter = samfile.fetch(reference, barcode_location[0], barcode_location[1])
     for x in bam_iter:
-        if barcode_flank[0] in x.seq:
-            if barcode_flank[1] in x.seq:
+        if barcode_flank[0][10:] in x.seq:
+            if barcode_flank[1][:5] in x.seq:
                 start = x.seq.find(barcode_flank[0][10:]) + 5
                 end = x.seq.find(barcode_flank[1][:5])
                 if start < end and len(x.seq[start:end]) == 15:
                     umi = x.seq[start:end]
                     if hamming(umi, barcode) <= distance:
-                        if umi not in barcode_dict.keys():
-                            barcode_dict[barcode] = [x.query_name]
-
-                        else:
-                            barcode_dict[barcode].append(x.query_name)
-    return barcode_dict[barcode]
+                        if x.query_name not in read_list:
+                            read_list.append(x.query_name)
+                        # if umi not in barcode_dict.keys():
+                        #     x.query_name
+                        #     barcode_dict[barcode] = [x.query_name]
+                        #
+                        # else:
+                        #     barcode_dict[barcode].append(x.query_name)
+    return read_list
 
 
 def write_read_list(read_list, read_dict, output_file, samfile):
