@@ -162,6 +162,39 @@ def barcode_extraction(samfile, reference, barcode_location, barcode_flank):
     return barcodes
 
 
+def barcode_extraction_dict(samfile, reference,barcode_site, barcode_location, barcode_flank):
+    # similar to barcode extraction, but returns a dict of barcoes with reads as the values
+    # that can be used to parse data later on
+
+    # list for collecting barcodes
+    barcodes_dict = dict()
+
+    location_data = str(barcode_site)
+
+    bam_iter = samfile.fetch(reference, barcode_location[0], barcode_location[1])
+
+    for x in bam_iter:
+        if barcode_flank[0][10:] in x.seq:
+            if barcode_flank[1][:5] in x.seq:
+                start = x.seq.find(barcode_flank[0][10:]) + 5
+                end = x.seq.find(barcode_flank[1][:5])
+                if start < end and len(x.seq[start:end]) == 15:
+                    barcode = str(location_data) + "_" + x.seq[start:end]
+
+                    if barcode not in barcodes_dict.keys():
+                        barcodes_dict[barcode] = [x.query_name]
+                    else:
+                        barcodes_dict[barcode].append(x.query_name)
+    return barcodes_dict
+
+
+def fetch_reads_from_dict(barcodes_dict, barcode):
+
+    reads = barcodes_dict[barcode]
+
+    return reads
+
+
 def barcode_extraction_read_list(read_list, barcode_flank, read_dict):
     # list for collecting barcodes
     barcodes = []
