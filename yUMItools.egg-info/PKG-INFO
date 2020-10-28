@@ -1,0 +1,16 @@
+Metadata-Version: 1.1
+Name: yUMItools
+Version: 1.0.0
+Summary: UMI tools for ERR-Seq Project
+Home-page: https://github.com/adamn102/yUMItools/
+Author: Adam Nitido
+Author-email: anitido@g.harvard.edu
+License: UNKNOWN
+Description: ## yUMItools
+        
+        ![yUMItools](images/yUMItools_logo.svg)
+        
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
