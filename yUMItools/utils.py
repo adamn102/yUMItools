@@ -189,6 +189,7 @@ def barcode_extraction_dict(samfile, reference, barcode_location, barcode_flank)
                         barcodes_dict[barcode] = [x.query_name]
                     else:
                         barcodes_dict[barcode].append(x.query_name)
+    return barcodes_dict
 
 
 def fetch_reads_from_dict(barcodes_dict, barcode):
