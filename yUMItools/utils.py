@@ -170,21 +170,25 @@ def barcode_extraction_dict(samfile, reference, barcode_location, barcode_flank)
     barcodes_dict = dict()
 
     bam_iter = samfile.fetch(reference, barcode_location[0], barcode_location[1])
-
+    input_reads = 0
+    total_reads = 0
     for x in bam_iter:
-        if barcode_flank[0][10:] in x.seq:
-            if barcode_flank[1][:5] in x.seq:
-                start = x.seq.find(barcode_flank[0][10:]) + 5
-                #find the fist end motif after start
-                end = x.seq[start:].find(barcode_flank[1][:5]) + start
+        input_reads += 1
+        if (barcode_flank[0][12:] in x.seq) & (barcode_flank[1][:3] in x.seq):
+            if (barcode_location[0] in x.positions) & (barcode_location[1] in x.positions):
+                # total_reads += 1
+
+                start = x.positions.index(barcode_location[0])
+                end = x.positions.index(barcode_location[1])
+
                 if start < end and len(x.seq[start:end]) == 15:
+                    total_reads += 1
                     barcode = x.seq[start:end]
 
                     if barcode not in barcodes_dict.keys():
                         barcodes_dict[barcode] = [x.query_name]
                     else:
                         barcodes_dict[barcode].append(x.query_name)
-    return barcodes_dict
 
 
 def fetch_reads_from_dict(barcodes_dict, barcode):
