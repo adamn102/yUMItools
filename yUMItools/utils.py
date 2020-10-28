@@ -175,7 +175,8 @@ def barcode_extraction_dict(samfile, reference, barcode_location, barcode_flank)
         if barcode_flank[0][10:] in x.seq:
             if barcode_flank[1][:5] in x.seq:
                 start = x.seq.find(barcode_flank[0][10:]) + 5
-                end = x.seq.find(barcode_flank[1][:5])
+                #find the fist end motif after start
+                end = x.seq[start:].find(barcode_flank[1][:5]) + start
                 if start < end and len(x.seq[start:end]) == 15:
                     barcode = x.seq[start:end]
 
