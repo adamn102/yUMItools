@@ -1,5 +1,10 @@
 import pysam
 from collections import defaultdict, Counter
+import numpy as np
+
+chars = 'ACGTN'
+char_to_int = dict((c, i) for i, c in enumerate(chars))
+int_to_char = dict((i, c) for i, c in enumerate(chars))
 
 
 class YUMISet:
@@ -15,6 +20,7 @@ class YUMISet:
     * phasing multiple UMIs
     * generating consensus sequences
     * comparing multiple yUMI sets to compute mutation data
+    * generate quality metrics
     """
 
     def __init__(self, reference_sequence, bamfile):
@@ -22,6 +28,8 @@ class YUMISet:
         self.reference_sequence_name = self.reference_sequence.split("/")[-1].split(".")[0]
         self.barcode_dict = dict()
         self.flankseq_dict = dict()
+
+        # parse reference sequence - extract barcodes and barcode locations
         self.parse_reference_sequence()
 
         # read in the samfile
@@ -163,7 +171,7 @@ def barcode_extraction(samfile, reference, barcode_location, barcode_flank):
 
 
 def barcode_extraction_dict(samfile, reference, barcode_location, barcode_flank):
-    # similar to barcode extraction, but returns a dict of barcoes with reads as the values
+    # similar to barcode extraction, but returns a dict of barcodes with reads as the values
     # that can be used to parse data later on
 
     # list for collecting barcodes
@@ -190,6 +198,39 @@ def barcode_extraction_dict(samfile, reference, barcode_location, barcode_flank)
                     else:
                         barcodes_dict[barcode].append(x.query_name)
     return barcodes_dict
+
+
+def error_correct_barcode_dict(barcodes_dict, method='hard_limit'):
+    if method == "hard_limit":
+        error_corrected_barcode_dict = correct_barcodes_cutoff(barcodes_dict, cutoff=10)
+
+    if method == "grouping":
+        error_corrected_barcode_dict = correct_barcodes_grouping(barcodes_dict, cutoff=10)
+
+    return (error_corrected_barcode_dict)
+
+
+def correct_barcodes_cutoff(barcodes_dict, cutoff=10):
+    """
+    fillters keys,values from barcode dictionary where the number of reads 
+    in the key is less than the cutoff
+    
+    :param barcodes_dict: 
+    :param cutoff: 
+    :return: 
+    """
+    # output dict
+    error_corrected_barcode_dict = dict()
+
+    for k, v in barcodes_dict.items():
+        if len(v) >= cutoff:
+            error_corrected_barcode_dict[k] = v
+
+    return (error_corrected_barcode_dict)
+
+
+def correct_barcodes_grouping(barcodes_dict, cutoff=10):
+    pass
 
 
 def fetch_reads_from_dict(barcodes_dict, barcode):
@@ -263,3 +304,118 @@ def hamming(s1, s2):
     dist = len([i for i, j in zip(s1, s2) if i != j and i != 'N' and j != 'N'])
 
     return dist
+
+
+def sequences_to_one_hot(sequences, chars='ACGTN'):
+    """
+
+    :param sequences:
+    :param chars:
+    :return:
+    """
+    seqlen = len(sequences[0])
+    char_to_int = dict((c, i) for i, c in enumerate(chars))
+
+    one_hot_encoded = []
+    for seq in sequences:
+
+        onehot_seq = []
+
+        integer_encoded = [char_to_int[base] for base in seq]
+        for value in integer_encoded:
+            letter = [0 for _ in range(len(chars))]
+            letter[value] = 1
+            onehot_seq.append(letter)
+        one_hot_encoded.append(onehot_seq)
+
+    one_hot_encoded = np.array(one_hot_encoded)
+
+    return one_hot_encoded
+
+
+def consensus_caller(split_arr, min_coverage=5):
+    sequence_list = []
+    position_list = []
+    coverage_list = []
+    fraction_list = []
+
+    for pos in range(len(split_arr)):
+        coverage = len(split_arr[pos])
+        if coverage > min_coverage:
+            onehot_group = split_arr[pos][:, 0:5]
+            base_averages = np.average(onehot_group, axis=0)
+            top_base = np.argmax(base_averages, axis=0)
+            top_base_acc = np.amax(base_averages, axis=0)
+
+            consensus_bases = int_to_char[top_base]
+
+            position_list.append(split_arr[pos][:, 5][0])
+            sequence_list.append(consensus_bases)
+            coverage_list.append(coverage)
+            fraction_list.append(top_base_acc)
+
+    return (position_list, sequence_list, coverage_list, fraction_list)
+
+
+def UMI_consensus(barcode, corrected_barcode_dict, y_file):
+    barcode = umi
+    sequences = corrected_barcode_dict[str(barcode)]
+
+    #parse reads and bases
+    positions = []
+    bases = []
+    quality = []
+    for read_name in sequences:
+        for read in y_file.read_dict[read_name]:
+            #make sure the read have the same length for position and sequence
+            if len(read.positions) == len(read.seq):
+
+                positions.extend(read.positions)
+                bases.extend(read.seq)
+                quality.extend(read.qual)
+
+
+
+    #one hot encode
+    integer_encoded = [char_to_int[base] for base in bases]
+
+    onehot_seq = []
+    for value in integer_encoded:
+        letter = [0 for _ in range(len(chars))]
+        letter[value] = 1
+        onehot_seq.append(letter)
+
+    one_hot_encoded = np.array(onehot_seq)
+    # print(len(one_hot_encoded))
+    positions_array = np.array(positions)
+    # print(len(positions_array))
+    # positions_list = set(positions)
+
+    # for pos in positions_list:
+    #     site_data = one_hot_encoded[int(pos) == positions_array]
+
+
+    # sorted_positions_array = positions_array.argsort()
+    # sorted_one_hot_encoded = one_hot_encoded[sorted_positions_array]
+    # sorted_positions_array = sorted_positions_array.reshape((len(sorted_positions_array),1))
+
+    #merge arrays
+    positions_array = positions_array.reshape((len(positions_array),1))
+    arr = np.hstack((one_hot_encoded,positions_array))
+
+    #sort array on position
+    arr = arr[arr[:,5].argsort()]
+
+    #split array by position
+    split_arr = np.array_split(arr,np.where(np.diff(arr[:,5]))[0]+1)
+
+    position_list,sequence_list,coverage_list,fraction_list = consensus_caller(split_arr)
+
+    df = pd.DataFrame({
+        'position':position_list,
+        'base':sequence_list,
+        'coverage':coverage_list,
+        'fraction':fraction_list
+    })
+    df['UMI'] = barcode
+    return(df)
