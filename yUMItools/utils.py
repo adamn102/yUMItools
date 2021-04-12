@@ -373,6 +373,8 @@ def UMI_consensus(barcode, corrected_barcode_dict, y_file):
                 positions.extend(read.positions)
                 bases.extend(read.seq)
                 quality.extend(read.qual)
+    if len(positions) == 0:
+        return 0
 
     # one hot encode
     integer_encoded = [char_to_int[base] for base in bases]
@@ -425,10 +427,13 @@ def consensus_df(barcode_dict, y_file, min_coverage=5):
         if len(barcode_dict[umi]) >= min_coverage:
             if count == 0:
                 df = UMI_consensus(umi, barcode_dict, y_file=y_file)
-                count += 1
+                if type(df) != int:
+                    count += 1
             else:
                 df2 = UMI_consensus(umi, barcode_dict, y_file=y_file)
-                df = df.append(df2)
+                if type(df2) != int:
+                    df = df.append(df2)
+
     # sample_df = df
     df['position'] = df['position'].astype(int)
     df['UMI_pos'] = df['UMI'] + "_" + df['position'].astype(str)
@@ -463,8 +468,8 @@ def pipeline_function(y_lib, y_sample, cutoff=5):
         overlap = len(list(set(sample_corrected_barcode_dict.keys()) & set(lib_corrected_barcode_dict.keys())))
         print(barcode, "sample and library overlap", overlap)
 
-        lib_df = consensus_df(lib_corrected_barcode_dict, y_file=y_lib)
-        samp_df = consensus_df(sample_corrected_barcode_dict, y_file=y_sample)
+        lib_df = consensus_df(lib_corrected_barcode_dict, y_file=y_lib,min_coverage=cutoff)
+        samp_df = consensus_df(sample_corrected_barcode_dict, y_file=y_sample,min_coverage=cutoff)
 
         if count == 0:
             # merge sample and lib df
@@ -477,6 +482,6 @@ def pipeline_function(y_lib, y_sample, cutoff=5):
     total_sites = merged_df.shape[0]
     total_mutations = merged_df[merged_df['base_x'] != merged_df['base_y']].shape[0]
 
-    print(total_sites, total_mutations, total_sites / total_mutations)
+    print(total_sites, total_mutations)
 
     return merged_df
