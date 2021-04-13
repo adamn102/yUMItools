@@ -440,36 +440,71 @@ def consensus_df(barcode_dict, y_file, min_coverage=5):
     return df
 
 
-def pipeline_function(y_lib, y_sample, cutoff=5):
+def library_pipeline(y_lib, reference="Rp0-reference", cutoff=5):
+    count = 0
+    barcodes = list(y_lib.barcode_dict.keys())
+    for barcode in barcodes:
+
+        lib_barcodes_dict = barcode_extraction_dict(samfile=y_lib.samfile,
+                                                    reference=reference,
+                                                    barcode_location=y_lib.barcode_dict[barcode],
+                                                    barcode_flank=y_lib.flankseq_dict[barcode])
+
+        lib_corrected_barcode_dict = correct_barcodes_cutoff(lib_barcodes_dict, cutoff=cutoff)
+        print(barcode, "library barcodes:", len(lib_corrected_barcode_dict.keys()))
+
+        lib_df = consensus_df(lib_corrected_barcode_dict, y_file=y_lib, min_coverage=cutoff)
+
+        lib_df['barcode'] = barcode
+
+        if count == 0:
+            # merge df across multiple
+            merged_df = lib_df
+            count += 1
+        else:
+            merged_df = merged_df.append(lib_df)
+
+    return merged_df
+
+
+def pipeline_function(lib_df,lib_corrected_barcode_dict,y_sample, reference="Rp0-reference", cutoff=5):
+    """
+    TODO: write bam file for specific UMIset data
+    :param y_lib:
+    :param y_sample:
+    :param cutoff:
+    :return:
+    """
     barcodes = list(y_lib.barcode_dict.keys())
 
     count = 0
 
     for barcode in barcodes:
 
-        # select one barcode location
-        lib_barcodes_dict = barcode_extraction_dict(samfile=y_lib.samfile,
-                                                    reference='Rp0-reference',
-                                                    barcode_location=y_lib.barcode_dict[barcode],
-                                                    barcode_flank=y_lib.flankseq_dict[barcode])
-
         sample_barcodes_dict = barcode_extraction_dict(samfile=y_sample.samfile,
-                                                       reference='Rp0-reference',
+                                                       reference=reference,
                                                        barcode_location=y_sample.barcode_dict[barcode],
                                                        barcode_flank=y_sample.flankseq_dict[barcode])
-
-        lib_corrected_barcode_dict = correct_barcodes_cutoff(lib_barcodes_dict, cutoff=cutoff)
-        print(barcode, "library barcodes:", len(lib_corrected_barcode_dict.keys()))
 
         sample_corrected_barcode_dict = correct_barcodes_cutoff(sample_barcodes_dict, cutoff=cutoff)
         print(barcode, 'sample barcodes:', len(sample_corrected_barcode_dict.keys()))
 
         # overlap between the two libraries
-        overlap = len(list(set(sample_corrected_barcode_dict.keys()) & set(lib_corrected_barcode_dict.keys())))
-        print(barcode, "sample and library overlap", overlap)
+        overlap_barcodes = list(set(sample_corrected_barcode_dict.keys()) & set(lib_corrected_barcode_dict.keys()))
+        print(barcode, "sample and library overlap", len(overlap_barcodes))
 
-        lib_df = consensus_df(lib_corrected_barcode_dict, y_file=y_lib,min_coverage=cutoff)
-        samp_df = consensus_df(sample_corrected_barcode_dict, y_file=y_sample,min_coverage=cutoff)
+        # print(len(lib_corrected_barcode_dict))
+        # print(len(sample_corrected_barcode_dict))
+
+        # select barcodes that are in both samples
+        lib_corrected_barcode_dict = {k: lib_corrected_barcode_dict[k] for k in overlap_barcodes}
+        sample_corrected_barcode_dict = {k: sample_corrected_barcode_dict[k] for k in overlap_barcodes}
+
+        # print(len(lib_corrected_barcode_dict))
+        # print(len(sample_corrected_barcode_dict))
+
+        lib_df = consensus_df(lib_corrected_barcode_dict, y_file=y_lib, min_coverage=cutoff)
+        samp_df = consensus_df(sample_corrected_barcode_dict, y_file=y_sample, min_coverage=cutoff)
 
         if count == 0:
             # merge sample and lib df
@@ -485,3 +520,5 @@ def pipeline_function(y_lib, y_sample, cutoff=5):
     print(total_sites, total_mutations)
 
     return merged_df
+
+# TODO - add plotting functions
