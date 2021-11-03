@@ -9,8 +9,6 @@ char_to_int = dict((c, i) for i, c in enumerate(chars))
 int_to_char = dict((i, c) for i, c in enumerate(chars))
 
 
-# test 22
-
 class YUMISet:
     """
     yUMI set Data Class

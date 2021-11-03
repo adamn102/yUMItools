@@ -202,3 +202,35 @@ def test_data_generation():
 
     #os.remove("test_data/fastq_files/library-deep-sequence_S00_L001_R1_001.fastq.gz")
     #os.remove("test_data/fastq_files/library-deep-sequence_S00_L001_R2_001.fastq.gz")
+
+def test_data_generation_indel():
+    test_data_fasta_filepath = 'test_data/reference_sequence/Rp0-reference.fa'
+
+    # create sequence object and load fasta file
+    s = TestTube(test_data_fasta_filepath)
+    library_sequence = s.reference_sequence_dict['Rp0-reference']
+    s.find_barcodes(library_sequence=library_sequence)
+
+    # generated barcode library diversity
+    s.generate_barcode_library(clones=500)
+
+    # reverse transcribe
+    high_rt_lib = reverse_transcribe_library(s.barcode_library_list,
+                                                 mut_type='indel',
+                                                 clones=50,
+                                                 mutation_rate=1./100)
+
+    # amplify barcode library
+    amp_barcode_lib = library_amp(high_rt_lib, cycles=15, p=0.5)
+
+    # tagment barcoded library
+    tagment_amp_barcode_lib = tagment(amp_barcode_lib, ave_size=700, std=50)
+
+    # deep sequence library and write output files
+    deep_sequence(tagment_amp_barcode_lib,
+                  'test_data/fastq_files/library-deep-sequence-high_rt_lib',
+                  read_length=300,
+                  coverage=5000)
+
+    #os.remove("test_data/fastq_files/library-deep-sequence_S00_L001_R1_001.fastq.gz")
+    #os.remove("test_data/fastq_files/library-deep-sequence_S00_L001_R2_001.fastq.gz")
