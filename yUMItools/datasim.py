@@ -6,7 +6,8 @@ from Bio.SeqRecord import SeqRecord
 import random
 from Bio import SeqIO, bgzf
 
-class testtube():
+
+class TestTube(object):
 
     def __init__(self, refernce_sequence_filepath):
 
@@ -154,7 +155,6 @@ def write_fasta_sequence_list(sequence_list, outfile):
     count = 0
 
     for read in sequence_list:
-
         sequence_record_list.append(
             SeqRecord(Seq(read),
                       str(count), str(count)))
@@ -215,10 +215,10 @@ def reverse_transcription_mutate_count(umi_set, mutation_rate=1. / 10000):
 
     count = 1
     for i in range(len(template)):
-        if count % int(1/mutation_rate) == 0:
+        if count % int(1 / mutation_rate) == 0:
             ref = str(template[i])
             mut = _mutation_count(ref)
-            mutation_list.append((i+1, mut))
+            mutation_list.append((i + 1, mut))
         count += 1
     # update sequence
     for mutation in mutation_list:
