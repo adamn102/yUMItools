@@ -6,7 +6,7 @@ import pandas as pd
 chars = 'ACGTN'
 char_to_int = dict((c, i) for i, c in enumerate(chars))
 int_to_char = dict((i, c) for i, c in enumerate(chars))
-
+#test
 
 class YUMISet:
     """
