@@ -153,6 +153,32 @@ def test_mutation_random():
         else:
             test_output.append(0)
 
+def test_mutation_indel():
+    test_data_fasta_filepath = 'test_data/reference_sequence/Rp0-reference.fa'
+
+    # create sequence object and load fasta file
+    s = TestTube(test_data_fasta_filepath)
+    library_sequence = s.reference_sequence_dict['Rp0-reference']
+    s.find_barcodes(library_sequence=library_sequence)
+
+    s.generate_barcode_library(clones=1)
+
+    template = s.barcode_library_list[0]
+
+    assert mutation_indel(template[0], mutation_rate=0) == 'G'
+
+    sequence = Seq("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+
+    test_output = []
+    for i in range(len(sequence)):
+        mutation = mutation_indel(sequence[i], mutation_rate=0.9)
+        if mutation == "A":
+            test_output.append(1)
+            print(mutation)
+        else:
+            test_output.append(0)
+            print(mutation)
+    print(test_output)
 
 def test_data_generation():
     test_data_fasta_filepath = 'test_data/reference_sequence/Rp0-reference.fa'
