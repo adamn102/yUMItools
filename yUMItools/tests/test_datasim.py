@@ -1,4 +1,8 @@
+import os
+
 from yUMItools.datasim import *
+import numpy as np
+import matplotlib.pyplot as plt
 
 
 def test__read_fasta_file():
@@ -148,3 +152,27 @@ def test_mutation_random():
             test_output.append(1)
         else:
             test_output.append(0)
+
+
+def test_data_generation():
+    test_data_fasta_filepath = 'test_data/reference_sequence/Rp0-reference.fa'
+
+    # create sequence object and load fasta file
+    s = TestTube(test_data_fasta_filepath)
+    library_sequence = s.reference_sequence_dict['Rp0-reference']
+    s.find_barcodes(library_sequence=library_sequence)
+
+    # generated barcode library diversity
+    s.generate_barcode_library(clones=500)
+
+    # amplify barcode library
+    amp_barcode_lib = library_amp(s.barcode_library_list, cycles=15, p=0.5)
+
+    # tagment barcoded library
+    tagment_amp_barcode_lib = tagment(amp_barcode_lib, ave_size=700, std=50)
+
+    # deep sequence library and write output files
+    deep_sequence(tagment_amp_barcode_lib, 'test_data/fastq_files/library-deep-sequence', read_length=300, coverage=5000)
+
+    #os.remove("test_data/fastq_files/library-deep-sequence_S00_L001_R1_001.fastq.gz")
+    #os.remove("test_data/fastq_files/library-deep-sequence_S00_L001_R2_001.fastq.gz")
