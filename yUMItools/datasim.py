@@ -78,8 +78,7 @@ class TestTube(object):
         for i in range(clones):
             # resolve barcode
             umi_set = resolve_barcode(self.reference_sequence_dict[self.record_id],
-                                      self.barcode_dict,
-                                      self.record_id + "_" + str(i))
+                                      self.barcode_dict)
             # mutation umi_seq
             # umi_set = reverse_transcription_mutate(umi_set, mutation_rate)
 
@@ -113,13 +112,12 @@ def reverse_transcribe_library(barcode_library_list, clones=2000, mut_type='rand
     return rt_library
 
 
-def resolve_barcode(reference_sequence, barcode_dict, id_name):
+def resolve_barcode(reference_sequence, barcode_dict):
     """
-    Take one instance of a reference sequence and population the barcodes
-    :param id_name:
+    Take one instance of a reference sequence and populate the barcodes
     :param barcode_dict:
     :param reference_sequence:
-    :return:
+    :return:record:
     """
 
     final_sequence = str(reference_sequence)
@@ -182,7 +180,7 @@ def reverse_transcription_mutate(umi_set, mutation_rate=1. / 10000):
 
     for i in range(len(template)):
         ref = str(template[i])
-        mut = _mutation(ref, mutation_rate)
+        mut = mutation_random(ref, mutation_rate)
         if ref != mut:
             mutation_list.append((i, mut))
 
@@ -217,7 +215,7 @@ def reverse_transcription_mutate_count(umi_set, mutation_rate=1. / 10000):
     for i in range(len(template)):
         if count % int(1 / mutation_rate) == 0:
             ref = str(template[i])
-            mut = _mutation_count(ref)
+            mut = mutation_count(ref)
             mutation_list.append((i + 1, mut))
         count += 1
     # update sequence
@@ -231,7 +229,7 @@ def reverse_transcription_mutate_count(umi_set, mutation_rate=1. / 10000):
     return updated_template
 
 
-def _mutation(ref, mutation_rate=1. / 10000):
+def mutation_random(ref, mutation_rate=1. / 10000):
     import numpy as np
 
     """
@@ -251,7 +249,7 @@ def _mutation(ref, mutation_rate=1. / 10000):
     return mutation
 
 
-def _mutation_count(ref):
+def mutation_count(ref):
     import numpy as np
 
     """

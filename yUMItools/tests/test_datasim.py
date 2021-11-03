@@ -97,3 +97,54 @@ def test_reverse_transcribe_library():
                                             mut_type='random',
                                             mutation_rate=1. / 100)
     assert hamming(rt_library[0], rt_library[1]) >= 10
+
+
+def test_resolve_barcode():
+    # filepath
+    test_data_fasta_filepath = 'test_data/reference_sequence/Rp0-reference.fa'
+
+    # create sequence object and load fasta file
+    s = TestTube(test_data_fasta_filepath)
+
+    library_sequence = s.reference_sequence_dict['Rp0-reference']
+    s.find_barcodes(library_sequence=library_sequence)
+
+    umi_set = resolve_barcode(s.reference_sequence_dict[s.record_id],
+                              s.barcode_dict)
+
+    assert umi_set[0:10] == s.reference_sequence_dict['Rp0-reference'][0:10]
+
+
+def test_generate_barcode():
+    # test for correct length
+    assert len(generate_barcode(10)) == 10
+
+    # test for sufficient randomness
+    result_list = []
+    for i in range(10):
+        result_list.append(hamming(generate_barcode(10), generate_barcode(10)))
+    assert sum(result_list) / len(result_list) >= 5
+
+
+def test_mutation_random():
+    test_data_fasta_filepath = 'test_data/reference_sequence/Rp0-reference.fa'
+
+    # create sequence object and load fasta file
+    s = TestTube(test_data_fasta_filepath)
+    library_sequence = s.reference_sequence_dict['Rp0-reference']
+    s.find_barcodes(library_sequence=library_sequence)
+
+    s.generate_barcode_library(clones=1)
+
+    template = s.barcode_library_list[0]
+
+    assert mutation_random(template[0], mutation_rate=0) == 'G'
+
+    sequence = Seq("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+
+    test_output = []
+    for i in range(len(sequence)):
+        if mutation_random(sequence[i], mutation_rate=0.5) == "A":
+            test_output.append(1)
+        else:
+            test_output.append(0)
