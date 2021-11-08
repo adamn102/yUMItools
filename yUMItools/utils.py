@@ -9,6 +9,20 @@ char_to_int = dict((c, i) for i, c in enumerate(chars))
 int_to_char = dict((i, c) for i, c in enumerate(chars))
 
 
+def char_to_int_multiple(string):
+    output = ''
+    for char in range(len(string)):
+        output += str(char_to_int[string[char]])
+    return output
+
+
+def int_to_char_multiple(int_string):
+    output = ''
+    for char in range(len(int_string)):
+        output += str(int_to_char[int(int_string[char])])
+    return output
+
+
 class YUMISet:
     """
     yUMI set Data Class
@@ -285,6 +299,147 @@ class YUMISet:
         })
         df['UMI'] = barcode
         return df
+
+    def UMI_consensus_indel(self, barcode, corrected_barcode_dict, min_coverage=5):
+
+        # find the reads (sequences) that correspond to a specific barcode
+        read_list = corrected_barcode_dict[str(barcode)]
+        #print(read_list)
+        outer_count = 0
+        for read_name in read_list:
+            print(read_name)
+            for read in self.read_dict[read_name]:
+                # print(len(read.positions), len(read.seq))
+                align_array = np.array(read.aligned_pairs)
+                # print(align_array)
+                # find deletions
+                deletions = list(np.where(align_array[:, 0] == None)[0])
+                insertions = list(np.where(align_array[:, 1] == None)[0])
+
+                # convert bases and quals into an array
+                quals = np.array(list(read.qual), dtype=object)
+                bases = np.array(list(read.seq), dtype=object)
+                # quals = read.qual
+                # bases = read.seq
+
+                #account for deletions
+                for deletion in deletions:
+                    print(deletion)
+                    quals = np.append(np.append(quals[0:deletion], np.array(["N"], dtype=object),0),quals[deletion:],0)
+                    bases = np.append(np.append(bases[0:deletion], np.array(["N"], dtype=object), 0),
+                                      bases[deletion:], 0)
+
+
+                # account for insertions
+
+                insertion_lengths = list()
+                insertion_positions = list()
+                #print(insertions)
+                for insertion in insertions:
+                    count = 0
+                    insertion_length = 0
+                    align_array[insertion, ][1] = int(align_array[insertion + 1, ][1])
+                    # check if insertions are sequential
+                    if count < len(insertions)-1:
+                        if insertion + 1 == insertions[count + 1]:
+                            insertion_length += 1
+                            count += 1
+                    else:
+                        insertion_lengths.append(insertion_length)
+                        insertion_positions.append(insertion)
+
+                    # insert new bases ans q-scores
+                for i in range(len(insertion_positions)):
+                    print(insertion_positions[i])
+                    insert_bases = "".join(bases[insertion_positions[i]:insertion_positions[i] + insertion_lengths[i] + 1])
+                    bases[insertion_positions[i]] = insert_bases
+
+                    insert_quals = "".join(
+                        quals[insertion_positions[i]:insertion_positions[i] + insertion_lengths[i] + 1])
+                    quals[insertion_positions[i]] = insert_quals
+
+                # print(bases)
+                # remove old bases
+                deletion_sites = [i + 1 for i in insertion_positions]
+                bases = np.delete(bases, deletion_sites)
+                quals = np.delete(quals, deletion_sites)
+                align_array = np.delete(align_array, deletion_sites, axis=0)
+
+                # print(bases)
+
+                # qual_array = np.array([x for x in quals]).reshape(len(quals), 1)
+                quals = quals.reshape(len(quals), 1)
+                # print(qual_array.shape)
+                # integer_encoded = np.array([int(char_to_int[base]) for base in bases]).reshape(len(bases), 1)
+                bases = bases.reshape(len(bases), 1)
+                # print(integer_encoded.shape)
+                if outer_count == 0:
+                    arr = np.concatenate((align_array, bases, quals), axis=1)
+                    outer_count += 1
+                else:
+                    tmp_arr = np.concatenate((align_array, bases, quals), axis=1)
+                    arr = np.concatenate((arr, tmp_arr), axis=0)
+
+        # sort array on position
+        arr[:, 1] = arr[:, 1].astype(int)
+        arr = arr[arr[:, 1].argsort()]
+        print(arr)
+       #arr[:, 2] = arr[:, 2].astype(int)
+
+        # np.unique(onehot_group, return_counts=True)
+
+        # split array by position
+        # find unique positions
+        sequence_list = []
+        position_list = []
+        coverage_list = []
+        fraction_list = []
+
+        unique_positions, position_index = np.unique(arr[:, 1], return_index=True)
+        split_arr = np.split(arr, position_index[1:])
+
+        for position in range(len(split_arr)):
+
+            coverage = len(split_arr[position])
+
+            if coverage >= min_coverage:
+                onehot_group = split_arr[position][:, 0:4]
+                unique, counts = np.unique(onehot_group[:, 2], return_counts=True)
+
+                # base_count = np.bincount(onehot_group[:, 2].astype(int))
+                max_base = unique[np.argmax(counts)]
+                top_base_acc = counts[np.argmax(counts)]
+                #consensus_bases = int_to_char[max_base]
+
+                position_list.append(split_arr[position][:, 1][0])
+                sequence_list.append(max_base)
+                coverage_list.append(coverage)
+                fraction_list.append(top_base_acc)
+
+        return position_list, sequence_list, coverage_list, fraction_list
+
+        def consensus_caller(split_arr, min_coverage=5):
+            sequence_list = []
+            position_list = []
+            coverage_list = []
+            fraction_list = []
+
+            for pos in range(len(split_arr)):
+                coverage = len(split_arr[pos])
+                if coverage > min_coverage:
+                    onehot_group = split_arr[pos][:, 0:5]
+                    base_averages = np.average(onehot_group, axis=0)
+                    top_base = np.argmax(base_averages, axis=0)
+                    top_base_acc = np.amax(base_averages, axis=0)
+
+                    consensus_bases = int_to_char[top_base]
+
+                    position_list.append(split_arr[pos][:, 5][0])
+                    sequence_list.append(consensus_bases)
+                    coverage_list.append(coverage)
+                    fraction_list.append(top_base_acc)
+
+            return position_list, sequence_list, coverage_list, fraction_list
 
     def library_pipeline_v2(self, cutoff=5):
 
@@ -715,4 +870,3 @@ def consensus_caller(split_arr, min_coverage=5):
 #     return merged_df
 
 # TODO - add plotting functions
-
