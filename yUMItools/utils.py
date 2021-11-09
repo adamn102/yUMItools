@@ -300,70 +300,117 @@ class YUMISet:
         df['UMI'] = barcode
         return df
 
-    def UMI_consensus_indel(self, barcode, corrected_barcode_dict, min_coverage=5):
+    def umi_consensus_indel(self, barcode, corrected_barcode_dict, min_coverage=5):
 
         # find the reads (sequences) that correspond to a specific barcode
         read_list = corrected_barcode_dict[str(barcode)]
-        #print(read_list)
+        # print(read_list)
         outer_count = 0
+        print(len(read_list))
         for read_name in read_list:
-            print(read_name)
+            # print(read_name)
             for read in self.read_dict[read_name]:
                 # print(len(read.positions), len(read.seq))
                 align_array = np.array(read.aligned_pairs)
+
                 # print(align_array)
+
                 # find deletions
                 deletions = list(np.where(align_array[:, 0] == None)[0])
+
+                # find insertions
                 insertions = list(np.where(align_array[:, 1] == None)[0])
 
-                # convert bases and quals into an array
+                # print(insertions)
+
+                # convert bases and quals into arrays
                 quals = np.array(list(read.qual), dtype=object)
                 bases = np.array(list(read.seq), dtype=object)
-                # quals = read.qual
-                # bases = read.seq
 
-                #account for deletions
+                # handle deletions
                 for deletion in deletions:
-                    print(deletion)
-                    quals = np.append(np.append(quals[0:deletion], np.array(["N"], dtype=object),0),quals[deletion:],0)
-                    bases = np.append(np.append(bases[0:deletion], np.array(["N"], dtype=object), 0),
-                                      bases[deletion:], 0)
+                    # print(deletion)
+                    quals = np.append(
+                        np.append(quals[0:deletion], np.array(
+                            ["N"], dtype=object), 0), quals[deletion:], 0)
+                    bases = np.append(
+                        np.append(bases[0:deletion], np.array(
+                            ["N"], dtype=object), 0), bases[deletion:], 0)
 
+                # handle insertions
 
-                # account for insertions
+                #
+                # for each insertion, count the insertion length, store as a dict
+                index_array = np.array([(i - x) for i, x in enumerate(insertions)]).reshape(-1)
+                data_array = np.array(insertions).reshape(-1)
+                a = np.stack((index_array, data_array), axis=1)
+                insertion_lengths = []
+                insertion_positions = []
+                n = np.unique(a[:, 0])
+                for i in n:
+                    insertion_positions.append(a[a[:, 0] == i, 1][0])
+                    insertion_lengths.append(len(a[a[:, 0] == i, 1]))
+                insertion_dict = dict(zip(insertion_positions, insertion_lengths))
+                #print(insertion_dict)
 
-                insertion_lengths = list()
-                insertion_positions = list()
-                #print(insertions)
-                for insertion in insertions:
-                    count = 0
-                    insertion_length = 0
-                    align_array[insertion, ][1] = int(align_array[insertion + 1, ][1])
-                    # check if insertions are sequential
-                    if count < len(insertions)-1:
-                        if insertion + 1 == insertions[count + 1]:
-                            insertion_length += 1
-                            count += 1
-                    else:
-                        insertion_lengths.append(insertion_length)
-                        insertion_positions.append(insertion)
+                for k, v in insertion_dict.items():
+                    print(k, v)
+                    align_array[k, ][1] = int(align_array[k + v + 1, ][1])
+                    #print(align_array)
 
-                    # insert new bases ans q-scores
-                for i in range(len(insertion_positions)):
-                    print(insertion_positions[i])
-                    insert_bases = "".join(bases[insertion_positions[i]:insertion_positions[i] + insertion_lengths[i] + 1])
-                    bases[insertion_positions[i]] = insert_bases
+                    insert_bases = "".join(bases[k:k + v + 1])
+                    print(insert_bases)
+                    bases[k] = insert_bases
 
                     insert_quals = "".join(
-                        quals[insertion_positions[i]:insertion_positions[i] + insertion_lengths[i] + 1])
-                    quals[insertion_positions[i]] = insert_quals
+                        quals[k:k + v])
+                    quals[k] = insert_quals
+
+                # for insertion in insertions:
+                #     count = 0
+                #     insertion_length = 0
+                #     align_array[insertion,][1] = int(align_array[insertion + 1,][1])
+                #
+                #     # print(align_array[insertion, ][1])
+                #     # check if insertions are sequential
+                #     if count < len(insertions) - 1:
+                #         if insertion + 1 == insertions[count + 1]:
+                #             insertion_length += 1
+                #             count += 1
+                #     else:
+                #         insertion_lengths.append(insertion_length)
+                #         insertion_positions.append(insertion)
+
+                # insert new bases and q-scores
+                # for i in range(len(insertion_positions)):
+                #     # print(insertion_positions[i])
+                #     insert_bases = "".join(
+                #         bases[insertion_positions[i]:insertion_positions[i] + insertion_lengths[i] + 2])
+                #     bases[insertion_positions[i]] = insert_bases
+                #     # print(insert_bases)
+                #     # print(bases)
+                #
+                #     insert_quals = "".join(
+                #         quals[insertion_positions[i]:insertion_positions[i] + insertion_lengths[i] + 2])
+                #     quals[insertion_positions[i]] = insert_quals
 
                 # print(bases)
-                # remove old bases
-                deletion_sites = [i + 1 for i in insertion_positions]
-                bases = np.delete(bases, deletion_sites)
-                quals = np.delete(quals, deletion_sites)
-                align_array = np.delete(align_array, deletion_sites, axis=0)
+                # remove insertion bases
+                # deletion_sites = [i and i + 1 for i in insertion_positions]
+                deletion_sites = []
+                for k, v in insertion_dict.items():
+                    count = 1
+                    for i in range(v + 1):
+                        deletion_sites.append(k+count)
+                        count += 1
+
+                print(deletion_sites)
+                if len(deletion_sites) > 0:
+                    # print(deletion_sites)
+                    bases = np.delete(bases, deletion_sites)
+                    quals = np.delete(quals, deletion_sites)
+                    align_array = np.delete(align_array, deletion_sites, axis=0)
+                # print(bases)
 
                 # print(bases)
 
@@ -383,8 +430,8 @@ class YUMISet:
         # sort array on position
         arr[:, 1] = arr[:, 1].astype(int)
         arr = arr[arr[:, 1].argsort()]
-        print(arr)
-       #arr[:, 2] = arr[:, 2].astype(int)
+        # print(arr)
+        # arr[:, 2] = arr[:, 2].astype(int)
 
         # np.unique(onehot_group, return_counts=True)
 
@@ -397,6 +444,7 @@ class YUMISet:
 
         unique_positions, position_index = np.unique(arr[:, 1], return_index=True)
         split_arr = np.split(arr, position_index[1:])
+        # print(split_arr)
 
         for position in range(len(split_arr)):
 
@@ -409,7 +457,7 @@ class YUMISet:
                 # base_count = np.bincount(onehot_group[:, 2].astype(int))
                 max_base = unique[np.argmax(counts)]
                 top_base_acc = counts[np.argmax(counts)]
-                #consensus_bases = int_to_char[max_base]
+                # consensus_bases = int_to_char[max_base]
 
                 position_list.append(split_arr[position][:, 1][0])
                 sequence_list.append(max_base)

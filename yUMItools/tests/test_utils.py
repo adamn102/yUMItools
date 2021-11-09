@@ -13,7 +13,7 @@ def test_parse_reference_sequence():
     assert y.barcode_dict['barcode0'] == (265, 280)
 
 
-def test_UMI_consensus_indel():
+def test_umi_consensus_indel():
     y = YUMISet('test_data/reference_sequence/Rp0-reference.fa',
                 bamfile='test_data/sorted_reads/LRT-TEST-Rp0-INDELMUT-A_S00.bam')
     barcodes = list(y.barcode_dict.keys())
@@ -24,7 +24,7 @@ def test_UMI_consensus_indel():
     corrected_barcode_dict = correct_barcodes_cutoff(lib_barcodes_dict, cutoff=4)
 
     barcode = 'ATGTTTCTGGGAGCT'
-    position_list, sequence_list, coverage_list, fraction_list = y.UMI_consensus_indel(barcode, corrected_barcode_dict,min_coverage=1)
+    position_list, sequence_list, coverage_list, fraction_list = y.umi_consensus_indel(barcode, corrected_barcode_dict,min_coverage=1)
 
     df = pd.DataFrame({
         'position': position_list,
