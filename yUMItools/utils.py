@@ -249,56 +249,56 @@ class YUMISet:
         df['UMI_pos'] = df['UMI'] + "_" + df['position'].astype(str)
         return df
 
-    def UMI_consensus(self, barcode, corrected_barcode_dict):
-
-        sequences = corrected_barcode_dict[str(barcode)]
-
-        # parse reads and bases
-        positions = []
-        bases = []
-        quality = []
-        for read_name in sequences:
-            for read in self.read_dict[read_name]:
-                # make sure the read have the same length for position and sequence
-                if len(read.positions) == len(read.seq):
-                    positions.extend(read.positions)
-                    bases.extend(read.seq)
-                    quality.extend(read.qual)
-        if len(positions) == 0:
-            return 0
-
-        # one hot encode
-        integer_encoded = [char_to_int[base] for base in bases]
-
-        onehot_seq = []
-        for value in integer_encoded:
-            letter = [0 for _ in range(len(chars))]
-            letter[value] = 1
-            onehot_seq.append(letter)
-
-        one_hot_encoded = np.array(onehot_seq)
-        positions_array = np.array(positions)
-
-        # merge arrays
-        positions_array = positions_array.reshape((len(positions_array), 1))
-        arr = np.hstack((one_hot_encoded, positions_array))
-
-        # sort array on position
-        arr = arr[arr[:, 5].argsort()]
-
-        # split array by position
-        split_arr = np.array_split(arr, np.where(np.diff(arr[:, 5]))[0] + 1)
-
-        position_list, sequence_list, coverage_list, fraction_list = consensus_caller(split_arr)
-
-        df = pd.DataFrame({
-            'position': position_list,
-            'base': sequence_list,
-            'coverage': coverage_list,
-            'fraction': fraction_list
-        })
-        df['UMI'] = barcode
-        return df
+    # def UMI_consensus(self, barcode, corrected_barcode_dict):
+    #
+    #     sequences = corrected_barcode_dict[str(barcode)]
+    #
+    #     # parse reads and bases
+    #     positions = []
+    #     bases = []
+    #     quality = []
+    #     for read_name in sequences:
+    #         for read in self.read_dict[read_name]:
+    #             # make sure the read have the same length for position and sequence
+    #             if len(read.positions) == len(read.seq):
+    #                 positions.extend(read.positions)
+    #                 bases.extend(read.seq)
+    #                 quality.extend(read.qual)
+    #     if len(positions) == 0:
+    #         return 0
+    #
+    #     # one hot encode
+    #     integer_encoded = [char_to_int[base] for base in bases]
+    #
+    #     onehot_seq = []
+    #     for value in integer_encoded:
+    #         letter = [0 for _ in range(len(chars))]
+    #         letter[value] = 1
+    #         onehot_seq.append(letter)
+    #
+    #     one_hot_encoded = np.array(onehot_seq)
+    #     positions_array = np.array(positions)
+    #
+    #     # merge arrays
+    #     positions_array = positions_array.reshape((len(positions_array), 1))
+    #     arr = np.hstack((one_hot_encoded, positions_array))
+    #
+    #     # sort array on position
+    #     arr = arr[arr[:, 5].argsort()]
+    #
+    #     # split array by position
+    #     split_arr = np.array_split(arr, np.where(np.diff(arr[:, 5]))[0] + 1)
+    #
+    #     position_list, sequence_list, coverage_list, fraction_list = consensus_caller(split_arr)
+    #
+    #     df = pd.DataFrame({
+    #         'position': position_list,
+    #         'base': sequence_list,
+    #         'coverage': coverage_list,
+    #         'fraction': fraction_list
+    #     })
+    #     df['UMI'] = barcode
+    #     return df
 
     def consensus_caller(self, barcode, corrected_barcode_dict, min_coverage=5):
 
@@ -503,49 +503,6 @@ def max_count(string):
     # def barcode_extraction(samfile, reference, barcode_location, barcode_flank):
 
 
-#     # list for collecting barcodes
-#     barcodes = []
-#
-#     bam_iter = samfile.fetch(reference, barcode_location[0], barcode_location[1])
-#     for x in bam_iter:
-#         if barcode_flank[0][10:] in x.seq:
-#             if barcode_flank[1][:5] in x.seq:
-#                 start = x.seq.find(barcode_flank[0][10:]) + 5
-#                 end = x.seq.find(barcode_flank[1][:5])
-#                 if start < end and len(x.seq[start:end]) == 15:
-#                     barcodes.append(x.seq[start:end])
-#     return barcodes
-
-
-# def barcode_extraction_dict(samfile, reference, barcode_location, barcode_flank):
-#     # similar to barcode extraction, but returns a dict of barcodes with reads as the values
-#     # that can be used to parse data later on
-#
-#     # list for collecting barcodes
-#     barcodes_dict = dict()
-#
-#     bam_iter = samfile.fetch(reference, barcode_location[0], barcode_location[1])
-#     input_reads = 0
-#     total_reads = 0
-#     for x in bam_iter:
-#         input_reads += 1
-#         if (barcode_flank[0][12:] in x.seq) & (barcode_flank[1][:3] in x.seq):
-#             if (barcode_location[0] in x.positions) & (barcode_location[1] in x.positions):
-#                 # total_reads += 1
-#
-#                 start = x.positions.index(barcode_location[0])
-#                 end = x.positions.index(barcode_location[1])
-#
-#                 if start < end and len(x.seq[start:end]) == 15:
-#                     total_reads += 1
-#                     barcode = x.seq[start:end]
-#
-#                     if barcode not in barcodes_dict.keys():
-#                         barcodes_dict[barcode] = [x.query_name]
-#                     else:
-#                         barcodes_dict[barcode].append(x.query_name)
-#     return barcodes_dict
-
 def error_correct_barcode_dict(barcodes_dict, method='hard_limit'):
     if method == "hard_limit":
         error_corrected_barcode_dict = correct_barcodes_cutoff(barcodes_dict, cutoff=10)
@@ -678,169 +635,3 @@ def sequences_to_one_hot(sequences, chars='ACGTN'):
 
     return one_hot_encoded
 
-
-
-# def UMI_consensus(barcode, corrected_barcode_dict, y_file):
-#     barcode = barcode
-#     sequences = corrected_barcode_dict[str(barcode)]
-#
-#     # parse reads and bases
-#     positions = []
-#     bases = []
-#     quality = []
-#     for read_name in sequences:
-#         for read in y_file.read_dict[read_name]:
-#             # make sure the read have the same length for position and sequence
-#             if len(read.positions) == len(read.seq):
-#                 positions.extend(read.positions)
-#                 bases.extend(read.seq)
-#                 quality.extend(read.qual)
-#     if len(positions) == 0:
-#         return 0
-#
-#     # one hot encode
-#     integer_encoded = [char_to_int[base] for base in bases]
-#
-#     onehot_seq = []
-#     for value in integer_encoded:
-#         letter = [0 for _ in range(len(chars))]
-#         letter[value] = 1
-#         onehot_seq.append(letter)
-#
-#     one_hot_encoded = np.array(onehot_seq)
-#     # print(len(one_hot_encoded))
-#     positions_array = np.array(positions)
-#     # print(len(positions_array))
-#     # positions_list = set(positions)
-#
-#     # for pos in positions_list:
-#     #     site_data = one_hot_encoded[int(pos) == positions_array]
-#
-#     # sorted_positions_array = positions_array.argsort()
-#     # sorted_one_hot_encoded = one_hot_encoded[sorted_positions_array]
-#     # sorted_positions_array = sorted_positions_array.reshape((len(sorted_positions_array),1))
-#
-#     # merge arrays
-#     positions_array = positions_array.reshape((len(positions_array), 1))
-#     arr = np.hstack((one_hot_encoded, positions_array))
-#
-#     # sort array on position
-#     arr = arr[arr[:, 5].argsort()]
-#
-#     # split array by position
-#     split_arr = np.array_split(arr, np.where(np.diff(arr[:, 5]))[0] + 1)
-#
-#     position_list, sequence_list, coverage_list, fraction_list = consensus_caller(split_arr)
-#
-#     df = pd.DataFrame({
-#         'position': position_list,
-#         'base': sequence_list,
-#         'coverage': coverage_list,
-#         'fraction': fraction_list
-#     })
-#     df['UMI'] = barcode
-#     return df
-
-#
-# def consensus_df(barcode_dict, y_file, min_coverage=5):
-#     count = 0
-#     for umi in barcode_dict.keys():
-#         # print(umi)
-#         if len(barcode_dict[umi]) >= min_coverage:
-#             if count == 0:
-#                 df = UMI_consensus(umi, barcode_dict, y_file=y_file)
-#                 if type(df) != int:
-#                     count += 1
-#             else:
-#                 df2 = UMI_consensus(umi, barcode_dict, y_file=y_file)
-#                 if type(df2) != int:
-#                     df = df.append(df2)
-#
-#     # sample_df = df
-#     df['position'] = df['position'].astype(int)
-#     df['UMI_pos'] = df['UMI'] + "_" + df['position'].astype(str)
-#     return df
-
-
-# def library_pipeline(y_lib, reference="Rp0-reference", cutoff=5):
-#     count = 0
-#     barcodes = list(y_lib.barcode_dict.keys())
-#     for barcode in barcodes:
-#
-#         lib_barcodes_dict = barcode_extraction_dict(samfile=y_lib.samfile,
-#                                                     reference=reference,
-#                                                     barcode_location=y_lib.barcode_dict[barcode],
-#                                                     barcode_flank=y_lib.flankseq_dict[barcode])
-#
-#         lib_corrected_barcode_dict = correct_barcodes_cutoff(lib_barcodes_dict, cutoff=cutoff)
-#         print(barcode, "library barcodes:", len(lib_corrected_barcode_dict.keys()))
-#
-#         lib_df = consensus_df(lib_corrected_barcode_dict, y_file=y_lib, min_coverage=cutoff)
-#
-#         lib_df['barcode'] = barcode
-#
-#         if count == 0:
-#             # merge df across multiple
-#             merged_df = lib_df
-#             count += 1
-#         else:
-#             merged_df = merged_df.append(lib_df)
-#
-#     return merged_df
-
-
-# def pipeline_function(lib_df,lib_corrected_barcode_dict,y_sample, reference="Rp0-reference", cutoff=5):
-#     """
-#     TODO: write bam file for specific UMIset data
-#     :param y_lib:
-#     :param y_sample:
-#     :param cutoff:
-#     :return:
-#     """
-#     barcodes = list(y_lib.barcode_dict.keys())
-#
-#     count = 0
-#
-#     for barcode in barcodes:
-#
-#         sample_barcodes_dict = barcode_extraction_dict(samfile=y_sample.samfile,
-#                                                        reference=reference,
-#                                                        barcode_location=y_sample.barcode_dict[barcode],
-#                                                        barcode_flank=y_sample.flankseq_dict[barcode])
-#
-#         sample_corrected_barcode_dict = correct_barcodes_cutoff(sample_barcodes_dict, cutoff=cutoff)
-#         print(barcode, 'sample barcodes:', len(sample_corrected_barcode_dict.keys()))
-#
-#         # overlap between the two libraries
-#         overlap_barcodes = list(set(sample_corrected_barcode_dict.keys()) & set(lib_corrected_barcode_dict.keys()))
-#         print(barcode, "sample and library overlap", len(overlap_barcodes))
-#
-#         # print(len(lib_corrected_barcode_dict))
-#         # print(len(sample_corrected_barcode_dict))
-#
-#         # select barcodes that are in both samples
-#         lib_corrected_barcode_dict = {k: lib_corrected_barcode_dict[k] for k in overlap_barcodes}
-#         sample_corrected_barcode_dict = {k: sample_corrected_barcode_dict[k] for k in overlap_barcodes}
-#
-#         # print(len(lib_corrected_barcode_dict))
-#         # print(len(sample_corrected_barcode_dict))
-#
-#         lib_df = consensus_df(lib_corrected_barcode_dict, y_file=y_lib, min_coverage=cutoff)
-#         samp_df = consensus_df(sample_corrected_barcode_dict, y_file=y_sample, min_coverage=cutoff)
-#
-#         if count == 0:
-#             # merge sample and lib df
-#             merged_df = pd.merge(samp_df, lib_df, how="inner", on='UMI_pos')
-#         else:
-#             tmp_df = pd.merge(samp_df, lib_df, how="inner", on='UMI_pos')
-#             merged_df = merged_df.append(tmp_df)
-#         count += 1
-#
-#     # total_sites = merged_df.shape[0]
-#     # total_mutations = merged_df[merged_df['base_x'] != merged_df['base_y']].shape[0]
-#     #
-#     # print(total_sites, total_mutations)
-#
-#     return merged_df
-
-# TODO - add plotting functions
