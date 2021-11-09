@@ -236,11 +236,11 @@ class YUMISet:
             # print(umi)
             if len(barcode_dict[umi]) >= min_coverage:
                 if count == 0:
-                    df = self.UMI_consensus(umi, barcode_dict)
+                    df = self.consensus_caller(umi, barcode_dict, min_coverage)
                     if type(df) != int:
                         count += 1
                 else:
-                    df2 = self.UMI_consensus(umi, barcode_dict)
+                    df2 = self.consensus_caller(umi, barcode_dict, min_coverage)
                     if type(df2) != int:
                         df = df.append(df2)
 
@@ -414,11 +414,11 @@ class YUMISet:
                 onehot_group = split_arr[position][:, 0:4]
                 unique, counts = np.unique(onehot_group[:, 2], return_counts=True)
 
-                print(position, unique, counts)
+                #print(position, unique, counts)
                 # base_count = np.bincount(onehot_group[:, 2].astype(int))
                 max_base = unique[np.argmax(counts)]
                 top_base_acc = counts[np.argmax(counts)] / sum(counts)
-                print(max_base, top_base_acc)
+                #print(max_base, top_base_acc)
                 # consensus_bases = int_to_char[max_base]
 
                 position_list.append(split_arr[position][:, 1][0])
@@ -426,7 +426,16 @@ class YUMISet:
                 coverage_list.append(coverage)
                 fraction_list.append(top_base_acc)
 
-        return position_list, sequence_list, coverage_list, fraction_list
+        #return position_list, sequence_list, coverage_list, fraction_list
+
+        df = pd.DataFrame({
+            'position': position_list,
+            'base': sequence_list,
+            'coverage': coverage_list,
+            'fraction': fraction_list
+        })
+        df['UMI'] = barcode
+        return df
 
     def library_pipeline_v2(self, cutoff=5):
 
