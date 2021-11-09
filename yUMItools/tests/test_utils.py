@@ -25,7 +25,8 @@ def test_umi_consensus_indel():
 
     #barcode = 'ATGTTTCTGGGAGCT'
     barcode = 'ATTACTCGTATGACA'
-    position_list, sequence_list, coverage_list, fraction_list = y.umi_consensus_indel(barcode, corrected_barcode_dict,min_coverage=1)
+    #barcode = 'CCACCACGTGCGAAT'
+    position_list, sequence_list, coverage_list, fraction_list = y.consensus_caller(barcode, corrected_barcode_dict,min_coverage=5)
 
     df = pd.DataFrame({
         'position': position_list,
@@ -36,5 +37,8 @@ def test_umi_consensus_indel():
     df['UMI'] = barcode
 
     df.to_csv('test_data/test_UMI_consensus.csv')
-    print(df)
+    print(df[df['position'] == 692]['base'] == 'TT')
+    #assert df[df['position'] == 692]['base'] == 'TT'
+
+
 

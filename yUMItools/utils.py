@@ -300,13 +300,13 @@ class YUMISet:
         df['UMI'] = barcode
         return df
 
-    def umi_consensus_indel(self, barcode, corrected_barcode_dict, min_coverage=5):
+    def consensus_caller(self, barcode, corrected_barcode_dict, min_coverage=5):
 
         # find the reads (sequences) that correspond to a specific barcode
         read_list = corrected_barcode_dict[str(barcode)]
         # print(read_list)
         outer_count = 0
-        print(len(read_list))
+        #print(len(read_list))
         for read_name in read_list:
             # print(read_name)
             for read in self.read_dict[read_name]:
@@ -354,13 +354,13 @@ class YUMISet:
                 #print(insertion_dict)
 
                 for k, v in insertion_dict.items():
-                    print(k, v)
-                    print(align_array)
+                    #print(k, v)
+                    #print(align_array)
                     align_array[k, ][1] = int(align_array[k + v, ][1])
                     #print(align_array)
 
                     insert_bases = "".join(bases[k:k + v + 1])
-                    print(insert_bases)
+                    #print(insert_bases)
                     bases[k] = insert_bases
 
                     insert_quals = "".join(
@@ -374,7 +374,7 @@ class YUMISet:
                         deletion_sites.append(k+count)
                         count += 1
 
-                print(deletion_sites)
+                #print(deletion_sites)
                 if len(deletion_sites) > 0:
                     # print(deletion_sites)
                     bases = np.delete(bases, deletion_sites)
@@ -414,9 +414,11 @@ class YUMISet:
                 onehot_group = split_arr[position][:, 0:4]
                 unique, counts = np.unique(onehot_group[:, 2], return_counts=True)
 
+                print(position, unique, counts)
                 # base_count = np.bincount(onehot_group[:, 2].astype(int))
                 max_base = unique[np.argmax(counts)]
-                top_base_acc = counts[np.argmax(counts)]
+                top_base_acc = counts[np.argmax(counts)] / sum(counts)
+                print(max_base, top_base_acc)
                 # consensus_bases = int_to_char[max_base]
 
                 position_list.append(split_arr[position][:, 1][0])
@@ -425,29 +427,6 @@ class YUMISet:
                 fraction_list.append(top_base_acc)
 
         return position_list, sequence_list, coverage_list, fraction_list
-
-        def consensus_caller(split_arr, min_coverage=5):
-            sequence_list = []
-            position_list = []
-            coverage_list = []
-            fraction_list = []
-
-            for pos in range(len(split_arr)):
-                coverage = len(split_arr[pos])
-                if coverage > min_coverage:
-                    onehot_group = split_arr[pos][:, 0:5]
-                    base_averages = np.average(onehot_group, axis=0)
-                    top_base = np.argmax(base_averages, axis=0)
-                    top_base_acc = np.amax(base_averages, axis=0)
-
-                    consensus_bases = int_to_char[top_base]
-
-                    position_list.append(split_arr[pos][:, 5][0])
-                    sequence_list.append(consensus_bases)
-                    coverage_list.append(coverage)
-                    fraction_list.append(top_base_acc)
-
-            return position_list, sequence_list, coverage_list, fraction_list
 
     def library_pipeline_v2(self, cutoff=5):
 
@@ -691,28 +670,6 @@ def sequences_to_one_hot(sequences, chars='ACGTN'):
     return one_hot_encoded
 
 
-def consensus_caller(split_arr, min_coverage=5):
-    sequence_list = []
-    position_list = []
-    coverage_list = []
-    fraction_list = []
-
-    for pos in range(len(split_arr)):
-        coverage = len(split_arr[pos])
-        if coverage > min_coverage:
-            onehot_group = split_arr[pos][:, 0:5]
-            base_averages = np.average(onehot_group, axis=0)
-            top_base = np.argmax(base_averages, axis=0)
-            top_base_acc = np.amax(base_averages, axis=0)
-
-            consensus_bases = int_to_char[top_base]
-
-            position_list.append(split_arr[pos][:, 5][0])
-            sequence_list.append(consensus_bases)
-            coverage_list.append(coverage)
-            fraction_list.append(top_base_acc)
-
-    return position_list, sequence_list, coverage_list, fraction_list
 
 # def UMI_consensus(barcode, corrected_barcode_dict, y_file):
 #     barcode = barcode
