@@ -355,7 +355,8 @@ class YUMISet:
 
                 for k, v in insertion_dict.items():
                     print(k, v)
-                    align_array[k, ][1] = int(align_array[k + v + 1, ][1])
+                    print(align_array)
+                    align_array[k, ][1] = int(align_array[k + v, ][1])
                     #print(align_array)
 
                     insert_bases = "".join(bases[k:k + v + 1])
@@ -366,41 +367,10 @@ class YUMISet:
                         quals[k:k + v])
                     quals[k] = insert_quals
 
-                # for insertion in insertions:
-                #     count = 0
-                #     insertion_length = 0
-                #     align_array[insertion,][1] = int(align_array[insertion + 1,][1])
-                #
-                #     # print(align_array[insertion, ][1])
-                #     # check if insertions are sequential
-                #     if count < len(insertions) - 1:
-                #         if insertion + 1 == insertions[count + 1]:
-                #             insertion_length += 1
-                #             count += 1
-                #     else:
-                #         insertion_lengths.append(insertion_length)
-                #         insertion_positions.append(insertion)
-
-                # insert new bases and q-scores
-                # for i in range(len(insertion_positions)):
-                #     # print(insertion_positions[i])
-                #     insert_bases = "".join(
-                #         bases[insertion_positions[i]:insertion_positions[i] + insertion_lengths[i] + 2])
-                #     bases[insertion_positions[i]] = insert_bases
-                #     # print(insert_bases)
-                #     # print(bases)
-                #
-                #     insert_quals = "".join(
-                #         quals[insertion_positions[i]:insertion_positions[i] + insertion_lengths[i] + 2])
-                #     quals[insertion_positions[i]] = insert_quals
-
-                # print(bases)
-                # remove insertion bases
-                # deletion_sites = [i and i + 1 for i in insertion_positions]
                 deletion_sites = []
                 for k, v in insertion_dict.items():
                     count = 1
-                    for i in range(v + 1):
+                    for i in range(v):
                         deletion_sites.append(k+count)
                         count += 1
 
@@ -410,16 +380,10 @@ class YUMISet:
                     bases = np.delete(bases, deletion_sites)
                     quals = np.delete(quals, deletion_sites)
                     align_array = np.delete(align_array, deletion_sites, axis=0)
-                # print(bases)
 
-                # print(bases)
-
-                # qual_array = np.array([x for x in quals]).reshape(len(quals), 1)
                 quals = quals.reshape(len(quals), 1)
-                # print(qual_array.shape)
-                # integer_encoded = np.array([int(char_to_int[base]) for base in bases]).reshape(len(bases), 1)
                 bases = bases.reshape(len(bases), 1)
-                # print(integer_encoded.shape)
+
                 if outer_count == 0:
                     arr = np.concatenate((align_array, bases, quals), axis=1)
                     outer_count += 1
@@ -430,10 +394,6 @@ class YUMISet:
         # sort array on position
         arr[:, 1] = arr[:, 1].astype(int)
         arr = arr[arr[:, 1].argsort()]
-        # print(arr)
-        # arr[:, 2] = arr[:, 2].astype(int)
-
-        # np.unique(onehot_group, return_counts=True)
 
         # split array by position
         # find unique positions

@@ -23,7 +23,8 @@ def test_umi_consensus_indel():
 
     corrected_barcode_dict = correct_barcodes_cutoff(lib_barcodes_dict, cutoff=4)
 
-    barcode = 'ATGTTTCTGGGAGCT'
+    #barcode = 'ATGTTTCTGGGAGCT'
+    barcode = 'ATTACTCGTATGACA'
     position_list, sequence_list, coverage_list, fraction_list = y.umi_consensus_indel(barcode, corrected_barcode_dict,min_coverage=1)
 
     df = pd.DataFrame({
