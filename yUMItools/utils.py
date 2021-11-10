@@ -5,23 +5,6 @@ import pandas as pd
 from collections import Counter
 
 chars = 'ACGTN'
-char_to_int = dict((c, i) for i, c in enumerate(chars))
-int_to_char = dict((i, c) for i, c in enumerate(chars))
-
-
-def char_to_int_multiple(string):
-    output = ''
-    for char in range(len(string)):
-        output += str(char_to_int[string[char]])
-    return output
-
-
-def int_to_char_multiple(int_string):
-    output = ''
-    for char in range(len(int_string)):
-        output += str(int_to_char[int(int_string[char])])
-    return output
-
 
 class YUMISet:
     """
@@ -33,7 +16,7 @@ class YUMISet:
 
     * Parsing multiple bam data sets for any one bed formatted reference data set
     * error correcting UMIs
-    * phasing multiple UMIs
+    * phasing multiple UMIs (maybe)
     * generating consensus sequences
     * comparing multiple yUMI sets to compute mutation data
     * generate quality metrics
@@ -61,7 +44,7 @@ class YUMISet:
     def parse_reference_sequence(self):
         """
         This function will parse reference sequences for UMI locations
-        and reference sequences
+        and reference mapping sequences
 
         :param reference_sequence:
         :return:
@@ -249,57 +232,6 @@ class YUMISet:
         df['UMI_pos'] = df['UMI'] + "_" + df['position'].astype(str)
         return df
 
-    # def UMI_consensus(self, barcode, corrected_barcode_dict):
-    #
-    #     sequences = corrected_barcode_dict[str(barcode)]
-    #
-    #     # parse reads and bases
-    #     positions = []
-    #     bases = []
-    #     quality = []
-    #     for read_name in sequences:
-    #         for read in self.read_dict[read_name]:
-    #             # make sure the read have the same length for position and sequence
-    #             if len(read.positions) == len(read.seq):
-    #                 positions.extend(read.positions)
-    #                 bases.extend(read.seq)
-    #                 quality.extend(read.qual)
-    #     if len(positions) == 0:
-    #         return 0
-    #
-    #     # one hot encode
-    #     integer_encoded = [char_to_int[base] for base in bases]
-    #
-    #     onehot_seq = []
-    #     for value in integer_encoded:
-    #         letter = [0 for _ in range(len(chars))]
-    #         letter[value] = 1
-    #         onehot_seq.append(letter)
-    #
-    #     one_hot_encoded = np.array(onehot_seq)
-    #     positions_array = np.array(positions)
-    #
-    #     # merge arrays
-    #     positions_array = positions_array.reshape((len(positions_array), 1))
-    #     arr = np.hstack((one_hot_encoded, positions_array))
-    #
-    #     # sort array on position
-    #     arr = arr[arr[:, 5].argsort()]
-    #
-    #     # split array by position
-    #     split_arr = np.array_split(arr, np.where(np.diff(arr[:, 5]))[0] + 1)
-    #
-    #     position_list, sequence_list, coverage_list, fraction_list = consensus_caller(split_arr)
-    #
-    #     df = pd.DataFrame({
-    #         'position': position_list,
-    #         'base': sequence_list,
-    #         'coverage': coverage_list,
-    #         'fraction': fraction_list
-    #     })
-    #     df['UMI'] = barcode
-    #     return df
-
     def consensus_caller(self, barcode, corrected_barcode_dict, min_coverage=5):
 
         # find the reads (sequences) that correspond to a specific barcode
@@ -437,55 +369,10 @@ class YUMISet:
         df['UMI'] = barcode
         return df
 
-    def library_pipeline_v2(self, cutoff=5):
-
-        positions = []
-        bases = []
-        quality = []
-        umi_list = []
-        barcode_list = []
-
-        for barcode in list(self.barcode_dict.keys()):
-            print(barcode)
-            lib_barcodes_dict = self.barcode_extraction_dict(barcode)
-            umi_input_list = list(lib_barcodes_dict.keys())
-
-            for umi in umi_input_list:
-                sequences = lib_barcodes_dict[umi]
-                if len(sequences) >= cutoff:
-                    for read_name in sequences:
-                        for read in self.read_dict[read_name]:
-                            # make sure the read have the same length for position and sequence
-                            if len(read.positions) == len(read.seq):
-                                positions.extend(read.positions)
-                                bases.extend(read.seq)
-                                quality.extend(read.qual)
-                                umi_list.extend([umi] * len(read.positions))
-                                barcode_list.extend([barcode] * len(read.positions))
-
-        df = pd.DataFrame({
-            'position': positions,
-            'base': bases,
-            'coverage': quality,
-            'UMI': umi_list,
-            'barcode': barcode_list
-        })
-
-        group_df = df.groupby(['UMI', 'position', 'barcode'])['base'].apply(max_count)
-        group_df = group_df.reset_index()
-        group_df = group_df.fillna(0)
-
-        group_df[['base', 'fraction', 'coverage']] = pd.DataFrame(group_df['base'].tolist(), index=group_df.index)
-        group_df['UMI_pos'] = group_df['UMI'] + "_" + group_df['position'].astype(str)
-
-        self.umi_df = group_df
-
-        return self.umi_df
-
     def write_umi_data_to_bam(barcode, umi, output_file):
         """
         Write out the mapped bam data for any specific UMI -
-        This is useful for visually inspecting mutations in a bam file
+        This is useful for visually inspecting mutations in a specific bam file
         :param umi:
         :param output_file:
         :return:
@@ -609,29 +496,5 @@ def hamming(s1, s2):
     return dist
 
 
-def sequences_to_one_hot(sequences, chars='ACGTN'):
-    """
 
-    :param sequences:
-    :param chars:
-    :return:
-    """
-    seqlen = len(sequences[0])
-    char_to_int = dict((c, i) for i, c in enumerate(chars))
-
-    one_hot_encoded = []
-    for seq in sequences:
-
-        onehot_seq = []
-
-        integer_encoded = [char_to_int[base] for base in seq]
-        for value in integer_encoded:
-            letter = [0 for _ in range(len(chars))]
-            letter[value] = 1
-            onehot_seq.append(letter)
-        one_hot_encoded.append(onehot_seq)
-
-    one_hot_encoded = np.array(one_hot_encoded)
-
-    return one_hot_encoded
 

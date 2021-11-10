@@ -23,8 +23,8 @@ def test_umi_consensus_indel():
 
     corrected_barcode_dict = correct_barcodes_cutoff(lib_barcodes_dict, cutoff=4)
 
-    #barcode = 'ATGTTTCTGGGAGCT'
-    barcode = 'ATTACTCGTATGACA'
+    barcode = 'ATGTTTCTGGGAGCT'
+    #barcode = 'ATTACTCGTATGACA'
     #barcode = 'CCACCACGTGCGAAT'
     df = y.consensus_caller(barcode, corrected_barcode_dict,min_coverage=5)
 
