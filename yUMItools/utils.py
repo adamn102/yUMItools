@@ -6,6 +6,7 @@ from collections import Counter
 
 chars = 'ACGTN'
 
+
 class YUMISet:
     """
     yUMI set Data Class
@@ -107,7 +108,9 @@ class YUMISet:
 
         for read in self.samfile.fetch(None):
             if read.is_paired:
-                read_name = read.query_name
+                if not read.is_unmapped:
+                    if hasattr(read, "aligned_pairs"):
+                        read_name = read.query_name
 
             if read_name not in self.read_dict:
                 if read.is_read1:
@@ -238,90 +241,97 @@ class YUMISet:
         read_list = corrected_barcode_dict[str(barcode)]
         # print(read_list)
         outer_count = 0
-        #print(len(read_list))
+        # print(len(read_list))
         for read_name in read_list:
             # print(read_name)
             for read in self.read_dict[read_name]:
+
                 # print(len(read.positions), len(read.seq))
-                align_array = np.array(read.aligned_pairs)
 
-                # print(align_array)
+                # print(hasattr(read, "aligned_pairs"))
+                if hasattr(read, "aligned_pairs"):
 
-                # find deletions
-                deletions = list(np.where(align_array[:, 0] == None)[0])
+                    align_array = np.array(read.aligned_pairs)
 
-                # find insertions
-                insertions = list(np.where(align_array[:, 1] == None)[0])
+                    if align_array.ndim == 2:
 
-                # print(insertions)
+                        # print(barcode, align_array.ndim ,align_array.shape, len(read.query_sequence), read.is_unmapped)
 
-                # convert bases and quals into arrays
-                quals = np.array(list(read.qual), dtype=object)
-                bases = np.array(list(read.seq), dtype=object)
+                        # find deletions
+                        deletions = list(np.where(align_array[:, 0] == None)[0])
 
-                # handle deletions
-                for deletion in deletions:
-                    # print(deletion)
-                    quals = np.append(
-                        np.append(quals[0:deletion], np.array(
-                            ["N"], dtype=object), 0), quals[deletion:], 0)
-                    bases = np.append(
-                        np.append(bases[0:deletion], np.array(
-                            ["N"], dtype=object), 0), bases[deletion:], 0)
+                        # find insertions
+                        insertions = list(np.where(align_array[:, 1] == None)[0])
 
-                # handle insertions
+                        # print(insertions)
 
-                #
-                # for each insertion, count the insertion length, store as a dict
-                index_array = np.array([(i - x) for i, x in enumerate(insertions)]).reshape(-1)
-                data_array = np.array(insertions).reshape(-1)
-                a = np.stack((index_array, data_array), axis=1)
-                insertion_lengths = []
-                insertion_positions = []
-                n = np.unique(a[:, 0])
-                for i in n:
-                    insertion_positions.append(a[a[:, 0] == i, 1][0])
-                    insertion_lengths.append(len(a[a[:, 0] == i, 1]))
-                insertion_dict = dict(zip(insertion_positions, insertion_lengths))
-                #print(insertion_dict)
+                        # convert bases and quals into arrays
+                        quals = np.array(list(read.qual), dtype=object)
+                        bases = np.array(list(read.seq), dtype=object)
 
-                for k, v in insertion_dict.items():
-                    #print(k, v)
-                    #print(align_array)
-                    align_array[k, ][1] = int(align_array[k + v, ][1])
-                    #print(align_array)
+                        # handle deletions
+                        for deletion in deletions:
+                            # print(deletion)
+                            quals = np.append(
+                                np.append(quals[0:deletion], np.array(
+                                    ["N"], dtype=object), 0), quals[deletion:], 0)
+                            bases = np.append(
+                                np.append(bases[0:deletion], np.array(
+                                    ["N"], dtype=object), 0), bases[deletion:], 0)
 
-                    insert_bases = "".join(bases[k:k + v + 1])
-                    #print(insert_bases)
-                    bases[k] = insert_bases
+                        # handle insertions
 
-                    insert_quals = "".join(
-                        quals[k:k + v])
-                    quals[k] = insert_quals
+                        #
+                        # for each insertion, count the insertion length, store as a dict
+                        index_array = np.array([(i - x) for i, x in enumerate(insertions)]).reshape(-1)
+                        data_array = np.array(insertions).reshape(-1)
+                        a = np.stack((index_array, data_array), axis=1)
+                        insertion_lengths = []
+                        insertion_positions = []
+                        n = np.unique(a[:, 0])
+                        for i in n:
+                            insertion_positions.append(a[a[:, 0] == i, 1][0])
+                            insertion_lengths.append(len(a[a[:, 0] == i, 1]))
+                        insertion_dict = dict(zip(insertion_positions, insertion_lengths))
+                        # print(insertion_dict)
 
-                deletion_sites = []
-                for k, v in insertion_dict.items():
-                    count = 1
-                    for i in range(v):
-                        deletion_sites.append(k+count)
-                        count += 1
+                        for k, v in insertion_dict.items():
+                            # print(k, v)
+                            # print(align_array)
+                            align_array[k,][1] = int(align_array[k + v,][1])
+                            # print(align_array)
 
-                #print(deletion_sites)
-                if len(deletion_sites) > 0:
-                    # print(deletion_sites)
-                    bases = np.delete(bases, deletion_sites)
-                    quals = np.delete(quals, deletion_sites)
-                    align_array = np.delete(align_array, deletion_sites, axis=0)
+                            insert_bases = "".join(bases[k:k + v + 1])
+                            # print(insert_bases)
+                            bases[k] = insert_bases
 
-                quals = quals.reshape(len(quals), 1)
-                bases = bases.reshape(len(bases), 1)
+                            insert_quals = "".join(
+                                quals[k:k + v])
+                            quals[k] = insert_quals
 
-                if outer_count == 0:
-                    arr = np.concatenate((align_array, bases, quals), axis=1)
-                    outer_count += 1
-                else:
-                    tmp_arr = np.concatenate((align_array, bases, quals), axis=1)
-                    arr = np.concatenate((arr, tmp_arr), axis=0)
+                        deletion_sites = []
+                        for k, v in insertion_dict.items():
+                            count = 1
+                            for i in range(v):
+                                deletion_sites.append(k + count)
+                                count += 1
+
+                        # print(deletion_sites)
+                        if len(deletion_sites) > 0:
+                            # print(deletion_sites)
+                            bases = np.delete(bases, deletion_sites)
+                            quals = np.delete(quals, deletion_sites)
+                            align_array = np.delete(align_array, deletion_sites, axis=0)
+
+                        quals = quals.reshape(len(quals), 1)
+                        bases = bases.reshape(len(bases), 1)
+
+                        if outer_count == 0:
+                            arr = np.concatenate((align_array, bases, quals), axis=1)
+                            outer_count += 1
+                        else:
+                            tmp_arr = np.concatenate((align_array, bases, quals), axis=1)
+                            arr = np.concatenate((arr, tmp_arr), axis=0)
 
         # sort array on position
         arr[:, 1] = arr[:, 1].astype(int)
@@ -346,11 +356,11 @@ class YUMISet:
                 onehot_group = split_arr[position][:, 0:4]
                 unique, counts = np.unique(onehot_group[:, 2], return_counts=True)
 
-                #print(position, unique, counts)
+                # print(position, unique, counts)
                 # base_count = np.bincount(onehot_group[:, 2].astype(int))
                 max_base = unique[np.argmax(counts)]
                 top_base_acc = counts[np.argmax(counts)] / sum(counts)
-                #print(max_base, top_base_acc)
+                # print(max_base, top_base_acc)
                 # consensus_bases = int_to_char[max_base]
 
                 position_list.append(split_arr[position][:, 1][0])
@@ -358,7 +368,7 @@ class YUMISet:
                 coverage_list.append(coverage)
                 fraction_list.append(top_base_acc)
 
-        #return position_list, sequence_list, coverage_list, fraction_list
+        # return position_list, sequence_list, coverage_list, fraction_list
 
         df = pd.DataFrame({
             'position': position_list,
@@ -369,7 +379,7 @@ class YUMISet:
         df['UMI'] = barcode
         return df
 
-    def write_umi_data_to_bam(barcode, umi, output_file):
+    def write_umi_data_to_bam(self, barcode, umi, output_file):
         """
         Write out the mapped bam data for any specific UMI -
         This is useful for visually inspecting mutations in a specific bam file
@@ -494,7 +504,3 @@ def hamming(s1, s2):
     dist = len([i for i, j in zip(s1, s2) if i != j and i != 'N' and j != 'N'])
 
     return dist
-
-
-
-
