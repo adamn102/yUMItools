@@ -44,7 +44,7 @@ class YUMISet:
 
     def parse_reference_sequence(self):
         """
-        This function will parse reference sequences for UMI locations
+        This function parses reference sequences for UMI locations
         and reference mapping sequences
 
         :param reference_sequence:
@@ -90,38 +90,34 @@ class YUMISet:
         self.barcode_dict = barcode_dict
         self.flankseq_dict = flankseq_dict
 
-    def parse_bam_file(self, bam_file):
+    def read_pair_dict(self):
         """
-        create a barcode dict where the keys are the barcode
-        and the values are the ID values for reads that map
-        to the key barcode
-
-        for paired end reads - if one read maps to the barcode, make sure to keep both reads
-        :param bam_file:
+        Takes in the bam file passed into the yUMISet object
+        and parses the reads into a dict object
+        with the read names as the key and the read data as the values
+        this can get rather large - maybe worth deleting once done.
         :return:
         """
-        pass
-
-    def read_pair_dict(self):
-        # returns a dict with read names as keys and read files as values
-        # may get kinda large - be sure to del when done
 
         for read in self.samfile.fetch(None):
+            # filter out unpaired reads
             if read.is_paired:
+                # filer out non mapped reads
                 if not read.is_unmapped:
+                    # make sure the read object has the aligned_pairs attribute
                     if hasattr(read, "aligned_pairs"):
                         read_name = read.query_name
 
-            if read_name not in self.read_dict:
-                if read.is_read1:
-                    self.read_dict[read_name][0] = read
-                else:
-                    self.read_dict[read_name][1] = read
-            else:
-                if read.is_read1:
-                    self.read_dict[read_name][0] = read
-                else:
-                    self.read_dict[read_name][1] = read
+                        if read_name not in self.read_dict:
+                            if read.is_read1:
+                                self.read_dict[read_name][0] = read
+                            else:
+                                self.read_dict[read_name][1] = read
+                        else:
+                            if read.is_read1:
+                                self.read_dict[read_name][0] = read
+                            else:
+                                self.read_dict[read_name][1] = read
 
     def umi_phase(self, barcode_sequence, position_A, position_B, distance=2):
 
@@ -232,14 +228,20 @@ class YUMISet:
 
         # sample_df = df
         df['position'] = df['position'].astype(int)
-        df['UMI_pos'] = df['UMI'] + "_" + df['position'].astype(str)
+        # df['UMI_pos'] = df['UMI'] + "_" + df['position'].astype(str)
         return df
 
     def consensus_caller(self, barcode, corrected_barcode_dict, min_coverage=5):
 
         # find the reads (sequences) that correspond to a specific barcode
         read_list = corrected_barcode_dict[str(barcode)]
-        # print(read_list)
+        #print(len(read_list))
+
+        # if there are too many reads, take a subset of them
+        if len(read_list) >= 100:
+            read_list = np.random.choice(read_list, 100,replace=False)
+
+        #print("modified_read_list: ", len(read_list))
         outer_count = 0
         # print(len(read_list))
         for read_name in read_list:
@@ -379,7 +381,7 @@ class YUMISet:
         df['UMI'] = barcode
         return df
 
-    def write_umi_data_to_bam(self, barcode, umi, output_file):
+    def write_umi_data_to_bam(seread_namelf, barcode, umi, output_file):
         """
         Write out the mapped bam data for any specific UMI -
         This is useful for visually inspecting mutations in a specific bam file
