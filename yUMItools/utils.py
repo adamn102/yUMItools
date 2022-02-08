@@ -189,7 +189,7 @@ class YUMISet:
                             barcodes_dict[barcode].append(x.query_name)
         return barcodes_dict
 
-    def library_pipeline(self, cutoff=5):
+    def library_pipeline(self, cutoff=5,subest=False, sub_value=1000):
         count = 0
         barcodes = list(self.barcode_dict.keys())
 
@@ -200,7 +200,7 @@ class YUMISet:
             corrected_barcode_dict = correct_barcodes_cutoff(lib_barcodes_dict, cutoff=cutoff)
             print(barcode, "library barcodes:", len(corrected_barcode_dict.keys()))
 
-            umi_df = self.consensus_df(corrected_barcode_dict, min_coverage=cutoff)
+            umi_df = self.consensus_df(corrected_barcode_dict, min_coverage=cutoff,subest, sub_value)
 
             umi_df['barcode'] = barcode
 
@@ -212,17 +212,17 @@ class YUMISet:
 
         return self.umi_df
 
-    def consensus_df(self, barcode_dict, min_coverage=5):
+    def consensus_df(self, barcode_dict, min_coverage=5,subest, sub_value):
         count = 0
         for umi in barcode_dict.keys():
             # print(umi)
             if len(barcode_dict[umi]) >= min_coverage:
                 if count == 0:
-                    df = self.consensus_caller(umi, barcode_dict, min_coverage)
+                    df = self.consensus_caller(umi, barcode_dict, min_coverage,subest, sub_value)
                     if type(df) != int:
                         count += 1
                 else:
-                    df2 = self.consensus_caller(umi, barcode_dict, min_coverage)
+                    df2 = self.consensus_caller(umi, barcode_dict, min_coverage,subest, sub_value)
                     if type(df2) != int:
                         df = df.append(df2)
 
@@ -231,17 +231,18 @@ class YUMISet:
         # df['UMI_pos'] = df['UMI'] + "_" + df['position'].astype(str)
         return df
 
-    def consensus_caller(self, barcode, corrected_barcode_dict, min_coverage=5):
+    def consensus_caller(self, barcode, corrected_barcode_dict, min_coverage=5, subest=False, sub_value=1000):
 
         # find the reads (sequences) that correspond to a specific barcode
         read_list = corrected_barcode_dict[str(barcode)]
-        #print(len(read_list))
+        # print(len(read_list))
 
         # if there are too many reads, take a subset of them
-        if len(read_list) >= 100:
-            read_list = np.random.choice(read_list, 100,replace=False)
+        if subest:
+            if len(read_list) >= sub_value:
+                read_list = np.random.choice(read_list, sub_value, replace=False)
 
-        #print("modified_read_list: ", len(read_list))
+        # print("modified_read_list: ", len(read_list))
         outer_count = 0
         # print(len(read_list))
         for read_name in read_list:
