@@ -190,7 +190,7 @@ class YUMISet:
         return barcodes_dict
 
 
-    def library_pipeline(self, cutoff=5, subest=False, sub_value=1000):
+    def library_pipeline(self, cutoff=5, subset=False, sub_value=1000):
         count = 0
         barcodes = list(self.barcode_dict.keys())
 
@@ -201,7 +201,7 @@ class YUMISet:
             corrected_barcode_dict = correct_barcodes_cutoff(lib_barcodes_dict, cutoff=cutoff)
             print(barcode, "library barcodes:", len(corrected_barcode_dict.keys()))
 
-            umi_df = self.consensus_df(corrected_barcode_dict, min_coverage=cutoff, subest=subest, sub_value=sub_value)
+            umi_df = self.consensus_df(corrected_barcode_dict, min_coverage=cutoff, subset=subest, sub_value=sub_value)
 
             umi_df['barcode'] = barcode
 
@@ -213,7 +213,7 @@ class YUMISet:
 
         return self.umi_df
 
-    def consensus_df(self, barcode_dict, min_coverage=5,subest_=False, sub_value_=1000):
+    def consensus_df(self, barcode_dict, min_coverage=5,subset=False, sub_value_=1000):
         count = 0
         for umi in barcode_dict.keys():
             # print(umi)
@@ -232,14 +232,14 @@ class YUMISet:
         # df['UMI_pos'] = df['UMI'] + "_" + df['position'].astype(str)
         return df
 
-    def consensus_caller(self, barcode, corrected_barcode_dict, min_coverage=5, subest=False, sub_value=1000):
+    def consensus_caller(self, barcode, corrected_barcode_dict, min_coverage=5, subset=False, sub_value=1000):
 
         # find the reads (sequences) that correspond to a specific barcode
         read_list = corrected_barcode_dict[str(barcode)]
         # print(len(read_list))
 
         # if there are too many reads, take a subset of them
-        if subest:
+        if subset:
             if len(read_list) >= sub_value:
                 read_list = np.random.choice(read_list, sub_value, replace=False)
 
