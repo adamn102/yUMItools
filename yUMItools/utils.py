@@ -232,6 +232,7 @@ class YUMISet:
         # df['UMI_pos'] = df['UMI'] + "_" + df['position'].astype(str)
         return df
 
+
     def consensus_caller(self, barcode, corrected_barcode_dict, min_coverage=5, subset=False, sub_value=1000):
 
         # find the reads (sequences) that correspond to a specific barcode
