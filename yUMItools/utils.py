@@ -189,6 +189,7 @@ class YUMISet:
                             barcodes_dict[barcode].append(x.query_name)
         return barcodes_dict
 
+
     def library_pipeline(self, cutoff=5,subest=False, sub_value=1000):
         count = 0
         barcodes = list(self.barcode_dict.keys())
