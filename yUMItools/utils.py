@@ -200,7 +200,7 @@ class YUMISet:
             corrected_barcode_dict = correct_barcodes_cutoff(lib_barcodes_dict, cutoff=cutoff)
             print(barcode, "library barcodes:", len(corrected_barcode_dict.keys()))
 
-            umi_df = self.consensus_df(corrected_barcode_dict, min_coverage=cutoff,subest, sub_value)
+            umi_df = self.consensus_df(corrected_barcode_dict, min_coverage=cutoff,subest=subest, sub_value=sub_value)
 
             umi_df['barcode'] = barcode
 
@@ -218,11 +218,11 @@ class YUMISet:
             # print(umi)
             if len(barcode_dict[umi]) >= min_coverage:
                 if count == 0:
-                    df = self.consensus_caller(umi, barcode_dict, min_coverage,subest, sub_value)
+                    df = self.consensus_caller(umi, barcode_dict, min_coverage,subest=subest, sub_value=sub_value)
                     if type(df) != int:
                         count += 1
                 else:
-                    df2 = self.consensus_caller(umi, barcode_dict, min_coverage,subest, sub_value)
+                    df2 = self.consensus_caller(umi, barcode_dict, min_coverage,subest=subest, sub_value=sub_value)
                     if type(df2) != int:
                         df = df.append(df2)
 
