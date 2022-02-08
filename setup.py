@@ -17,7 +17,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="yUMItools",
-    version="1.0.3",
+    version="1.0.4",
     author="Adam Nitido",
     author_email="anitido@g.harvard.edu",
     description="UMI tools for ERR-Seq Project",

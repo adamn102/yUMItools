@@ -213,7 +213,7 @@ class YUMISet:
 
         return self.umi_df
 
-    def consensus_df(self, barcode_dict, min_coverage=5,subset=False, sub_value_=1000):
+    def consensus_df(self, barcode_dict, min_coverage=5,subset=False, sub_value=1000):
         count = 0
         for umi in barcode_dict.keys():
             # print(umi)
